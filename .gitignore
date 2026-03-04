@@ -1,0 +1,29 @@
+# python artifacts
+__pycache__/
+*.py[cod]
+*.so
+*.dylib
+
+# notebook checkpoints
+.ipynb_checkpoints/
+
+# environments
+.venv/
+venv/
+env/
+
+# os/editor files
+.DS_Store
+.vscode/
+.idea/
+
+# generated data artifacts
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/.gitignore
+
+data/processed/*.parquet
+
+# logs and outputs
+*.log
+.Rhistory

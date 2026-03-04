@@ -1,0 +1,4 @@
+# keep this directory structure but ignore scraped raw payloads
+*
+!.gitkeep
+!.gitignore
