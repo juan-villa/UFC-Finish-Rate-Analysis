@@ -100,4 +100,4 @@ ufc-analytics/
 - current analysis is retrospective and not a causal model.
 - model validation is in-sample; next step is time-based train/test validation.
 - fighter-level context (age, camp changes, layoffs, rank trajectories) is not yet integrated.
-- productionization improvements: cli-configurable analysis pipeline, tests, and automated data-quality checks.
+- implementaion of forward looking prediction using fighter profiles.
