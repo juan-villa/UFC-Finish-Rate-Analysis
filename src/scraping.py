@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import logging
 import random
 import re
@@ -94,6 +95,50 @@ def build_session() -> requests.Session:
     return session
 
 
+CHALLENGE_MARKER = "Checking your browser"
+
+
+def looks_like_challenge(html: str) -> bool:
+    return CHALLENGE_MARKER in html and "/__c" in html
+
+
+def solve_challenge(
+    session: requests.Session,
+    url: str,
+    html: str,
+    timeout_seconds: int,
+    logger: logging.Logger,
+) -> None:
+    """Solve the ufcstats.com JS proof-of-work interstitial and post the answer.
+
+    The page mines a nonce ``n`` such that ``sha256(f"{nonce}:{n}")`` starts with
+    a number of hex zeros, then POSTs it to ``/__c`` to obtain a clearance cookie
+    on the session. We replicate that here so a subsequent request returns the
+    real content.
+    """
+    nonce_match = re.search(r'nonce="([0-9a-fA-F]+)"', html)
+    target_match = re.search(r"target=new Array\((\d+)\+1\)", html)
+    if not nonce_match or not target_match:
+        raise RuntimeError("unrecognized browser-check challenge format")
+
+    nonce = nonce_match.group(1)
+    zeros = int(target_match.group(1))
+    prefix = "0" * zeros
+
+    answer = 0
+    while hashlib.sha256(f"{nonce}:{answer}".encode()).hexdigest()[:zeros] != prefix:
+        answer += 1
+
+    logger.info("solved browser-check challenge (zeros=%s, n=%s)", zeros, answer)
+    base = re.match(r"(https?://[^/]+)", url).group(1)
+    session.post(
+        base + "/__c",
+        data={"nonce": nonce, "n": answer},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=timeout_seconds,
+    )
+
+
 def fetch_page(
     session: requests.Session,
     url: str,
@@ -109,6 +154,9 @@ def fetch_page(
         try:
             response = session.get(url, timeout=timeout_seconds)
             if response.status_code == 200:
+                if looks_like_challenge(response.text):
+                    solve_challenge(session, url, response.text, timeout_seconds, logger)
+                    continue
                 return response.text
             if response.status_code in transient_statuses:
                 sleep_seconds = backoff_factor**attempt + random.uniform(0.0, 0.3)

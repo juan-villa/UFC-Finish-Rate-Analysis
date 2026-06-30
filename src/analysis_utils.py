@@ -137,7 +137,7 @@ def classify_outcome(victory_result: Any) -> str:
 def prepare_analysis_frame(
     dataframe: pd.DataFrame,
     start_date: str = "2015-01-01",
-    end_date: str = "2026-01-01",
+    end_date: str | None = None,
     allowed_divisions: list[str] | None = None,
 ) -> pd.DataFrame:
     allowed = allowed_divisions if allowed_divisions is not None else CURRENT_DIVISIONS
@@ -148,9 +148,14 @@ def prepare_analysis_frame(
     df["Year"] = df["Date"].dt.year
 
     df = df[df["Weight_Class"].isin(allowed)]
-    df = df[(df["Date"] > pd.Timestamp(start_date)) & (df["Date"] < pd.Timestamp(end_date))].copy()
+    df = df[df["Date"] > pd.Timestamp(start_date)].copy()
+    if end_date is not None:
+        df = df[df["Date"] < pd.Timestamp(end_date)].copy()
 
     df["Outcome"] = df["Victory_Result"].apply(classify_outcome)
+    # Majority decisions are too rare to read cleanly and skew the figures, so
+    # they are excluded from the analysis frame entirely.
+    df = df[df["Outcome"] != "MDEC"].copy()
     for column in NUMERIC_COLUMNS:
         df[column] = pd.to_numeric(df[column], errors="coerce")
 
@@ -205,7 +210,7 @@ def compute_outcome_mix_by_division(
     weight_order: list[str] | None = None,
     include_outcomes: list[str] | None = None,
 ) -> pd.DataFrame:
-    outcomes = include_outcomes or ["KO", "SUB", "UDEC", "SDEC", "MDEC"]
+    outcomes = include_outcomes or ["KO", "SUB", "UDEC", "SDEC"]
     filtered_df = dataframe[dataframe["Outcome"].isin(outcomes)].copy()
 
     finish_counts = (
