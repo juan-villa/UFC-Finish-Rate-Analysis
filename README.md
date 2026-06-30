@@ -1,10 +1,10 @@
 # UFC Analytics
 
 ## Overview
-This project analyzes how UFC fight finishes evolve over time and across weight classes, then compares two probabilistic models (logit vs probit) for predicting whether a bout ends in a finish (KO/TKO or submission).
+This project is an observational study of how UFC fights end in the modern era (2015 to 2026). Rather than building a predictive model, it follows the data to surface trends and patterns in finishes (KO/TKO or submission) versus decisions, both over time and across weight classes.
 
 Why it matters:
-- finish probability influences matchmaking strategy, fan engagement, and betting/risk models.
+- finish dynamics influence matchmaking strategy, fan engagement, and betting/risk models.
 - division-level finish dynamics are not uniform, so aggregate trends can hide actionable differences.
 
 ## Data
@@ -17,27 +17,39 @@ Raw records are written to `data/raw/ufc_event_data.csv` (or parquet) with this 
 
 `Event, Date, Location, WL, Fighter_A, Fighter_B, Fighter_A_KD, Fighter_B_KD, Fighter_A_STR, Fighter_B_STR, Fighter_A_TD, Fighter_B_TD, Fighter_A_SUB, Fighter_B_SUB, Victory_Result, Victory_Method, Round, Time, Weight_Class, Title, Fight_Bonus, Perf_Bonus, Sub_Bonus, KO_Bonus`
 
+The analysis step adds derived `Year` and `Outcome` (KO, SUB, SDEC, UDEC, DRAW) columns and writes a processed snapshot to `data/processed/ufc_event_data.csv`.
+
 ### Ethical note
 - this project uses publicly available event-level sports data.
 - scraping is rate-limited and retry-aware to reduce server load.
 - no personal secrets, private credentials, or non-public data are used.
 
 ## Methodology
-- eda: yearly finish rates, division heatmaps, and outcome-mix heatmaps.
-- feature engineering: bout-level totals (knockdowns, significant strikes, takedowns, submission attempts), strike differential, centered year, and weight-class indicators.
-- inference/modeling: logit and probit binary classifiers on the same feature matrix.
-- evaluation: calibration curves, ROC/AUC, and confusion-matrix metrics at threshold 0.5.
+This is an exploratory, observational analysis. The notebook works through four questions:
+1. is the overall finish rate drifting over time, or is it mostly stable?
+2. how has the composition of outcomes (KO, submission, decision) shifted year to year?
+3. which divisions are structurally finish-heavy, and which lean on the judges?
+4. do divisions differ not just in how often fights finish, but in how they finish?
+
+Each question is paired with a figure and a short written read of what the data shows, with open threads flagged for further work.
 
 ## Key Results
-- finish rates remain near ~50% overall but show meaningful year-to-year swings.
-- heavier men’s divisions are persistently more finish-prone than lighter and many women’s divisions.
-- logit and probit perform almost identically (`AUC ≈ 0.94`), so threshold tuning is more impactful than model-family choice.
+- the overall finish rate stays inside a tight band around 0.50 (standard deviation 0.026). Year-to-year movement is volatility rather than a durable trend.
+- the composition of outcomes is remarkably persistent. Unanimous decisions and knockouts anchor the mix in every year, with the bands shifting modestly but never reordering.
+- division is the dominant axis of variation. The average finish-rate spread from the most to least finish-prone class is roughly 29 percentage points, from Light Heavyweight at the top to Women's Strawweight at the bottom.
+- divisions differ in finish mechanism, not just frequency. Heavyweight is knockout-forward, while Women's Strawweight is carried to the scorecards far more often.
 
+### Finish rate over time
 ![Finish rate trend](figs/finish_rate_trend.png)
 
+### Outcome composition over time
+![Outcome composition trend](figs/outcome_composition_trend.png)
+
+### Finish rate by division and year
 ![Division finish heatmap](figs/division_finish_heatmap.png)
 
-![ROC logit vs probit](figs/roc_logit_probit.png)
+### Outcome mix by division
+![Division outcome mix](figs/division_outcome_mix.png)
 
 ## Reproducibility
 ### 1) setup
@@ -82,8 +94,9 @@ ufc-analytics/
       ufc_event_data.csv
   figs/
     division_finish_heatmap.png
+    division_outcome_mix.png
     finish_rate_trend.png
-    roc_logit_probit.png
+    outcome_composition_trend.png
   notebooks/
     analysis.ipynb
   src/
@@ -97,7 +110,8 @@ ufc-analytics/
 ```
 
 ## Limitations + Future Improvements
-- current analysis is retrospective and not a causal model.
-- model validation is in-sample; next step is time-based train/test validation.
+- the analysis is retrospective and observational, not a causal or predictive model.
+- finish dynamics are tracked in aggregate; a natural next step is to follow individual divisions over time.
+- round-by-round timing is not yet used, so the analysis captures how fights end but not when within a fight.
+- title and main-event bouts are not separated from the undercard baseline.
 - fighter-level context (age, camp changes, layoffs, rank trajectories) is not yet integrated.
-- implementaion of forward looking prediction using fighter profiles.
